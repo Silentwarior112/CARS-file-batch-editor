@@ -21,10 +21,19 @@ An example set is included.
 
 [Batch Remove]: Deletes part data from the loaded CARS files. You can delete a specific type + category, or delete ALL parts of a
 certain type. Additionally this can be used to clean up CARS files that have dummy FFFFFFFF bytes.
+<p align="center">
+  <img width="476" height="347" src="https://github.com/Silentwarior112/CARS-file-batch-editor/blob/main/pic_remove.PNG">
+</p>
 
 [Batch Replace]: Target a specific part type + category for each loaded CARS file. This replaces any matches with the specified
 part.
+<p align="center">
+  <img width="425" height="343" src="https://github.com/Silentwarior112/CARS-file-batch-editor/blob/main/pic_replace.PNG">
+</p>
 
 [Batch Add]: Add a specific part to each loaded CARS file.
+<p align="center">
+  <img width="436" height="349" src="https://github.com/Silentwarior112/CARS-file-batch-editor/blob/main/pic_add.PNG">
+</p>
 
 [Scrollbox]: View the CARS file's part list.
