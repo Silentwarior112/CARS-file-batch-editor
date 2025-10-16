@@ -6,6 +6,10 @@ This tool is intended to automate adding generic parts and deleting groups of pa
 The tool is bundled with a GENERIC_CAR.csv file containing names to associate with each CARS file, for easy identification.
 Simply replace it with your modified .csv if needed.
 
+<p align="center">
+  <img width="640" height="360" src="https://github.com/Silentwarior112/CARS-file-batch-editor/blob/main/pic.PNG">
+</p>
+
 # Functions
 [Load files]: Select either a single CARS file or multiple. Use Ctrl+A to select all CARS file in a folder.
 Once loaded, any action you do will be done to EVERY FILE you selected. For editing a single CARS file, make sure to
