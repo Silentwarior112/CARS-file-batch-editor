@@ -7,7 +7,7 @@ The tool is bundled with a GENERIC_CAR.csv file containing names to associate wi
 Simply replace it with your modified .csv if needed.
 
 <p align="center">
-  <img width="640" height="360" src="https://github.com/Silentwarior112/CARS-file-batch-editor/blob/main/pic.PNG">
+  <img width="891" height="790" src="https://github.com/Silentwarior112/CARS-file-batch-editor/blob/main/pic.PNG">
 </p>
 
 # Functions
