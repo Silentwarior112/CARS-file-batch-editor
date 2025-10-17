@@ -150,9 +150,49 @@ def remove_type_category_from_file(path: str, type_value: int, category_value: i
 def replace_type_category_in_file(path: str,
                                   target_type: int,
                                   target_category: int,
-                                  new_id: int,
+                                  new_id,                     # int or None
                                   new_type: int,
                                   new_category: int) -> bool:
+    with open(path, "rb") as f:
+        data = f.read()
+    if len(data) < HEADER_SIZE:
+        raise ValueError("File too small to contain header (need 8 bytes).")
+
+    header = data[:HEADER_SIZE]
+    body = data[HEADER_SIZE:]
+    if len(body) % ITEM_SIZE != 0:
+        raise ValueError("Body length is not a multiple of 16 bytes; cannot edit safely.")
+
+    unpack_fmt = "<III4s"
+    pack_fmt = "<III4s"
+
+    total = len(body) // ITEM_SIZE
+    replaced = False
+    chunks = []
+
+    for i in range(total):
+        off = i * ITEM_SIZE
+        chunk = body[off: off + ITEM_SIZE]
+        _id_val, type_val, cat_val, _pad = struct.unpack(unpack_fmt, chunk)
+
+        if (not replaced) and (type_val == target_type) and (cat_val == target_category):
+            # If new_id is None, keep the existing id
+            use_id = _id_val if (new_id is None) else int(new_id)
+            chunk = struct.pack(pack_fmt, use_id, int(new_type), int(new_category), b"\x00\x00\x00\x00")
+            replaced = True
+
+        chunks.append(chunk)
+
+    if not replaced:
+        return False
+
+    new_body = b"".join(chunks)
+    new_header = bytes([0xFF]) + header[1:8]   # always set 1st byte to FF per your rule
+
+    with open(path, "wb") as f:
+        f.write(new_header + new_body)
+
+    return True
     with open(path, "rb") as f:
         data = f.read()
     if len(data) < HEADER_SIZE:
@@ -656,7 +696,6 @@ class App(tk.Tk):
     
         dlg = tk.Toplevel(self)
         dlg.title("Batch replace item (by Type & Category)")
-        dlg.geometry("280x270")
         dlg.transient(self)
         dlg.grab_set()
     
@@ -679,9 +718,21 @@ class App(tk.Tk):
         ttk.Entry(dlg, textvariable=new_cat_var, width=20).grid(row=rowi+1, column=0, padx=10, pady=(0, 8), sticky="w")
         rowi += 2
     
+        # Retain ID checkbox + New ID field
+        retain_id_var = tk.BooleanVar(value=False)
+        def _toggle_new_id():
+            id_state = "disabled" if retain_id_var.get() else "normal"
+            new_id_entry.configure(state=id_state)
+    
+        retain_chk = ttk.Checkbutton(dlg, text="Retain part ID", variable=retain_id_var, command=_toggle_new_id)
+        retain_chk.grid(row=rowi, column=0, padx=10, pady=(0, 4), sticky="w")
+        rowi += 1
+    
         ttk.Label(dlg, text="New ID (uint32):").grid(row=rowi, column=0, padx=10, pady=(0, 2), sticky="w")
         new_id_var = tk.StringVar(value="0")
-        ttk.Entry(dlg, textvariable=new_id_var, width=20).grid(row=rowi+1, column=0, padx=10, pady=(0, 12), sticky="w")
+        new_id_entry = ttk.Entry(dlg, textvariable=new_id_var, width=20)
+        new_id_entry.grid(row=rowi+1, column=0, padx=10, pady=(0, 12), sticky="w")
+        _toggle_new_id()  # initialize state
         rowi += 2
     
         btns = ttk.Frame(dlg)
@@ -695,6 +746,7 @@ class App(tk.Tk):
                 target_cat_str=target_cat_var.get(),
                 new_cat_str=new_cat_var.get(),
                 new_id_str=new_id_var.get(),
+                retain_id=retain_id_var.get(),
             )
         ).pack(side="right")
     
@@ -706,17 +758,19 @@ class App(tk.Tk):
                                 target_type_str: str,
                                 target_cat_str: str,
                                 new_cat_str: str,
-                                new_id_str: str):
+                                new_id_str: str,
+                                retain_id: bool):
         dlg.destroy()
         try:
             target_type = int(target_type_str.split("—", 1)[0].strip())
             target_category = int(target_cat_str.strip(), 0)
             new_category = int(new_cat_str.strip(), 0)
-            new_id = int(new_id_str.strip(), 0)
+            new_id = None if retain_id else int(new_id_str.strip(), 0)
         except Exception:
             messagebox.showerror("Batch replace", "Invalid inputs. Use uint32 numbers (e.g., 123 or 0x7B).")
             return
-            
+    
+        # Confirm if multiple files
         if not self._confirm_multi_file_action("replace parts"):
             return
     
@@ -729,8 +783,8 @@ class App(tk.Tk):
                     path,
                     target_type=target_type,
                     target_category=target_category,
-                    new_id=new_id,
-                    new_type=target_type,  # <- KEEP SAME TYPE
+                    new_id=new_id,                  # None => keep existing
+                    new_type=target_type,           # keep same type per your rule
                     new_category=new_category,
                 )
                 if changed:
@@ -745,7 +799,9 @@ class App(tk.Tk):
         msg = [
             "Batch replace finished.",
             f"Target: Type={target_type} — {PART_TYPE_NAMES.get(target_type, 'Unknown')}, Category={target_category}",
-            f"Replaced with: ID={new_id}, Category={new_category} (same Type)",
+            ("Replaced with: Category="
+            f"{new_category} and retained ID" if new_id is None else
+            f"Replaced with: ID={new_id}, Category={new_category}"),
             f"Files processed: {total_files}",
             f"Files modified: {files_modified}",
         ]
